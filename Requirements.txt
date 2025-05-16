@@ -1,0 +1,35 @@
+# Django and REST Framework
+Django==3.2.20
+djangorestframework==3.14.0
+django-cors-headers==4.1.0
+django-extensions==3.2.3
+
+# Authentication
+django-allauth==0.54.0
+django-rest-auth==0.9.5
+
+# Image Processing
+Pillow==9.5.0
+
+# Database
+psycopg2-binary==2.9.6  # For PostgreSQL (optional)
+
+# Development Tools
+python-dotenv==1.0.0
+django-debug-toolbar==4.1.0
+
+# Documentation
+drf-yasg==1.21.6  # For API documentation
+
+# Testing
+pytest==7.3.1
+pytest-django==4.5.2
+factory-boy==3.2.1
+
+# Deployment
+gunicorn==20.1.0
+whitenoise==6.4.0
+
+# Utilities
+pytz==2023.3
+six==1.16.0
