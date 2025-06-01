@@ -2,7 +2,7 @@ from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
 from users.models import User
 from cars.models import Car, CarImage, CarFeature, CarAvailability
-from bookings.models import Booking, Review
+from bookings.models import Booking, Review,Report
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -90,3 +90,15 @@ class RegisterSerializer(serializers.ModelSerializer):
 class LoginSerializer(serializers.Serializer):
     username = serializers.CharField(required=True)
     password = serializers.CharField(required=True, write_only=True)
+
+class ReportSerializer(serializers.ModelSerializer):
+    reporter_username = serializers.CharField(source='reporter.username', read_only=True)
+    reported_user_username = serializers.CharField(source='reported_user.username', read_only=True, allow_null=True)
+    reported_car_details = serializers.CharField(source='reported_car.__str__', read_only=True, allow_null=True)
+    
+    class Meta:
+        model = Report
+        fields = ['id', 'reporter', 'reporter_username', 'reported_user', 'reported_user_username', 
+                 'reported_car', 'reported_car_details', 'report_type', 'reason', 'status', 
+                 'admin_notes', 'created_at', 'updated_at']
+        read_only_fields = ['reporter', 'reported_user', 'reported_car', 'report_type', 'reason', 'created_at']

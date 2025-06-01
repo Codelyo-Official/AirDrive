@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Booking Confirmation</title>
+</head>
+<body>
+    <h1>Booking Confirmation</h1>
+    <p>Dear {{ user.first_name|default:user.username }},</p>
+    
+    <p>Your booking for <strong>{{ car.make }} {{ car.model }} ({{ car.year }})</strong> has been confirmed with the following details:</p>
+    
+    <ul>
+        <li><strong>Booking ID:</strong> {{ booking.id }}</li>
+        <li><strong>Start Date:</strong> {{ booking.start_date }}</li>
+        <li><strong>End Date:</strong> {{ booking.end_date }}</li>
+        <li><strong>Total Cost:</strong> ${{ booking.total_cost }}</li>
+        <li><strong>Status:</strong> {{ booking.get_status_display }}</li>
+    </ul>
+    
+    {% if booking.status == 'pending' %}
+    <p>Your booking is currently pending approval from the car owner. We will notify you once it's approved.</p>
+    {% elif booking.status == 'approved' %}
+    <p>Your booking has been approved! You can pick up the car on the start date.</p>
+    {% endif %}
+    
+    <p>Thank you for using our service!</p>
+    
+    <p>Best regards,<br>
+    The Turo Clone Team</p>
+</body>
+</html>

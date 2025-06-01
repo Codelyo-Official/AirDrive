@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Booking, Review
+from .models import Booking, Review, Report
 
 class ReviewInline(admin.TabularInline):
     model = Review
@@ -24,3 +24,20 @@ class BookingAdmin(admin.ModelAdmin):
     def mark_as_completed(self, request, queryset):
         queryset.update(status='completed')
     mark_as_completed.short_description = "Mark selected bookings as completed"
+
+@admin.register(Report)
+class ReportAdmin(admin.ModelAdmin):
+    list_display = ('report_type', 'reporter', 'reported_user', 'reported_car', 'status', 'created_at')
+    list_filter = ('report_type', 'status')
+    search_fields = ('reporter__username', 'reported_user__username', 'reason')
+    readonly_fields = ('reporter', 'reported_user', 'reported_car', 'report_type', 'reason', 'created_at')
+    
+    actions = ['mark_as_resolved', 'mark_as_dismissed']
+    
+    def mark_as_resolved(self, request, queryset):
+        queryset.update(status='resolved')
+    mark_as_resolved.short_description = "Mark selected reports as resolved"
+    
+    def mark_as_dismissed(self, request, queryset):
+        queryset.update(status='dismissed')
+    mark_as_dismissed.short_description = "Mark selected reports as dismissed"

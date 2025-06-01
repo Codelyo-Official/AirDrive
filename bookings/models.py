@@ -33,3 +33,31 @@ class Review(models.Model):
     
     def __str__(self):
         return f"Review for {self.booking}"
+
+class Report(models.Model):
+    REPORT_TYPE_CHOICES = (
+        ('user', 'User Report'),
+        ('car', 'Car Report'),
+    )
+    
+    STATUS_CHOICES = (
+        ('pending', 'Pending Review'),
+        ('resolved', 'Resolved'),
+        ('dismissed', 'Dismissed'),
+    )
+    
+    reporter = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reports_submitted')
+    reported_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reports_received', null=True, blank=True)
+    reported_car = models.ForeignKey(Car, on_delete=models.CASCADE, related_name='reports', null=True, blank=True)
+    report_type = models.CharField(max_length=10, choices=REPORT_TYPE_CHOICES)
+    reason = models.TextField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    admin_notes = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        if self.report_type == 'user':
+            return f"Report on {self.reported_user.username} by {self.reporter.username}"
+        else:
+            return f"Report on {self.reported_car} by {self.reporter.username}"
