@@ -1,6 +1,7 @@
 from django.db import models
 from users.models import User
 from cars.models import Car
+from django.conf import settings
 
 class Booking(models.Model):
     STATUS_CHOICES = (
@@ -33,3 +34,16 @@ class Review(models.Model):
     
     def __str__(self):
         return f"Review for {self.booking}"
+
+class Report(models.Model):
+    REPORT_TYPE_CHOICES = (
+        ('user', 'User'),
+        ('car', 'Car'),
+    )
+
+    reporter = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='reports_made')
+    report_type = models.CharField(max_length=10, choices=REPORT_TYPE_CHOICES)
+    reason = models.TextField()
+    reported_user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.CASCADE, related_name='reports_received')
+    reported_car = models.ForeignKey(Car, null=True, blank=True, on_delete=models.CASCADE, related_name='reports')
+    created_at = models.DateTimeField(auto_now_add=True)

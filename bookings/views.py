@@ -4,9 +4,226 @@ from django.contrib import messages
 from django.utils import timezone
 from datetime import datetime
 from decimal import Decimal
-from .models import Booking, Review
+from .models import Booking, Review,Report
 from .forms import BookingForm, ReviewForm
 from cars.models import Car
+from rest_framework.permissions import IsAuthenticated
+from .serializers import BookingSerializer,ReportSerializer,BookingCreateSerializer
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import permissions, status
+from rest_framework import generics
+from rest_framework.permissions import IsAdminUser
+
+
+class AdminReportListAPIView(generics.ListAPIView):
+    serializer_class = ReportSerializer
+
+    def get_queryset(self):
+        queryset = Report.objects.all()
+        report_type = self.request.query_params.get("report_type")
+        status = self.request.query_params.get("status")
+
+        if report_type:
+            queryset = queryset.filter(report_type=report_type)
+        if status:
+            queryset = queryset.filter(status=status)
+
+        return queryset
+class AdminReportUpdateAPIView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def put(self, request, report_id):
+        report = get_object_or_404(Report, id=report_id)
+        status = request.data.get('status')
+        notes = request.data.get('admin_notes', '')
+        suspend_user = request.data.get('suspend_user', False)
+        remove_car = request.data.get('remove_car', False)
+
+        report.status = status
+        report.admin_notes = notes
+        report.save()
+
+        if status == 'resolved':
+            if report.report_type == 'user' and suspend_user:
+                report.reported_user.is_suspended = True
+                report.reported_user.save()
+            elif report.report_type == 'car' and remove_car:
+                report.reported_car.delete()
+
+        return Response({'message': 'Report updated successfully'})
+
+class AdminBookingUpdateAPIView(generics.UpdateAPIView):
+    queryset = Booking.objects.all()
+    serializer_class = BookingSerializer
+    permission_classes = [IsAdminUser]
+    lookup_field = 'id'
+
+
+class AdminBookingListAPIView(generics.ListAPIView):
+    serializer_class = BookingSerializer
+
+    def get_queryset(self):
+        queryset = Booking.objects.all()
+        status = self.request.query_params.get("status")
+        user_id = self.request.query_params.get("user_id")
+        car_id = self.request.query_params.get("car_id")
+        start_date = self.request.query_params.get("start_date")
+        end_date = self.request.query_params.get("end_date")
+
+        if status:
+            queryset = queryset.filter(status=status)
+        if user_id:
+            queryset = queryset.filter(user_id=user_id)
+        if car_id:
+            queryset = queryset.filter(car_id=car_id)
+        if start_date:
+            queryset = queryset.filter(start_date__gte=start_date)
+        if end_date:
+            queryset = queryset.filter(end_date__lte=end_date)
+
+        return queryset
+
+
+class MyBookingsAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        bookings = Booking.objects.filter(user=request.user).order_by('-created_at')
+
+        data = []
+        for booking in bookings:
+            data.append({
+                "booking_id": booking.id,
+                "car": {
+                    "id": booking.car.id,
+                    "make": booking.car.make,
+                    "model": booking.car.model,
+                    "year": booking.car.year,
+                    "license_plate": booking.car.license_plate,
+                },
+                "start_date": booking.start_date,
+                "end_date": booking.end_date,
+                "status": booking.status,
+                "total_cost": str(booking.total_cost),
+                "platform_fee": str(booking.platform_fee),
+                "owner_payout": str(booking.owner_payout),
+                "created_at": booking.created_at,
+            })
+
+        return Response(data)
+
+
+class BookingCreateAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = BookingCreateSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            booking = serializer.save()
+            return Response({
+                "message": "Booking created successfully.",
+                "booking_id": booking.id,
+                "status": booking.status,
+                "total_cost": str(booking.total_cost),
+                "platform_fee": str(booking.platform_fee),
+                "owner_payout": str(booking.owner_payout)
+            }, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ReportCreateAPIView(APIView):
+    def post(self, request):
+        data = request.data
+        report_type = data.get('report_type')
+        reason = data.get('reason')
+        reported_user_id = data.get('reported_user_id')
+        reported_car_id = data.get('reported_car_id')
+
+        if report_type not in ['user', 'car']:
+            return Response({'error': 'Invalid report_type'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not reason:
+            return Response({'error': 'Reason is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if report_type == 'user':
+            if not reported_user_id:
+                return Response({'error': 'reported_user_id is required for user reports'}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                reported_user = User.objects.get(id=reported_user_id)
+            except User.DoesNotExist:
+                return Response({'error': 'Reported user does not exist'}, status=status.HTTP_404_NOT_FOUND)
+            
+            report = Report.objects.create(
+                report_type='user',
+                reason=reason,
+                reported_user=reported_user
+            )
+        else:  # report_type == 'car'
+            if not reported_car_id:
+                return Response({'error': 'reported_car_id is required for car reports'}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                reported_car = Car.objects.get(id=reported_car_id)
+            except Car.DoesNotExist:
+                return Response({'error': 'Reported car does not exist'}, status=status.HTTP_404_NOT_FOUND)
+            
+            report = Report.objects.create(
+                report_type='car',
+                reporter=request.user,
+                reason=reason,
+                reported_car=reported_car
+            )
+
+        return Response({'message': 'Report created successfully'}, status=status.HTTP_201_CREATED)
+
+
+class BookingApprovalAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, booking_id):
+        action = request.data.get("action")
+        if action not in ["approve", "reject"]:
+            return Response(
+                {"error": "Invalid action. Must be 'approve' or 'reject'."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            booking = Booking.objects.select_related('car').get(id=booking_id)
+        except Booking.DoesNotExist:
+            return Response({"error": "Booking not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Check if the logged-in user is the car owner
+        if booking.car.owner != request.user:
+            return Response({"error": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
+
+        # Only allow approval or rejection if booking is still pending
+        if booking.status != 'pending':
+            return Response({"error": "Only pending bookings can be updated."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Update status
+        booking.status = 'approved' if action == 'approve' else 'rejected'
+        booking.save()
+
+        return Response({"message": f"Booking {action}d successfully."}, status=status.HTTP_200_OK)
+
+
+class OwnerBookingsAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        # Get all bookings for cars owned by the current user
+        bookings = Booking.objects.filter(car__owner=request.user)
+
+        # Optional status filter
+        status_filter = request.query_params.get('status')
+        if status_filter:
+            bookings = bookings.filter(status=status_filter)
+
+        bookings = bookings.order_by('-created_at')
+        serializer = BookingSerializer(bookings, many=True)
+        return Response(serializer.data)
+
 
 @login_required
 def booking_list(request):

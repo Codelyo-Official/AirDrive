@@ -1,5 +1,6 @@
 from rest_framework import viewsets, generics, permissions, status
 from rest_framework.views import APIView
+from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from django.contrib.auth import authenticate
@@ -15,7 +16,22 @@ from .serializers import (
     CarImageSerializer, CarFeatureSerializer, CarAvailabilitySerializer,
     RegisterSerializer, LoginSerializer
 )
+from rest_framework.permissions import IsAuthenticated
+from django.db import transaction
+import json
 
+class BecomeCarOwnerView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        if user.user_type == 'owner' or user.user_type == 'car-owner':
+            return Response({'detail': 'You are already a car owner.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user.user_type = 'car-owner'  # or 'owner' if you want to keep that terminology
+        user.save()
+
+        return Response({'detail': 'You have become a car owner successfully.'}, status=status.HTTP_200_OK)
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
@@ -161,46 +177,102 @@ class ProfileView(APIView):
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-class CarImageView(APIView):
-    def post(self, request):
-        serializer = CarImageSerializer(data=request.data)
-        if serializer.is_valid():
-            # Check if user is the car owner
-            car = Car.objects.get(id=request.data.get('car'))
-            if request.user != car.owner:
-                return Response({"error": "You can only add images to your own cars."}, status=status.HTTP_403_FORBIDDEN)
-            
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+class CarManagementView(APIView):
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
 
-class CarFeatureView(APIView):
     def post(self, request):
-        serializer = CarFeatureSerializer(data=request.data)
-        if serializer.is_valid():
-            # Check if user is the car owner
-            car = Car.objects.get(id=request.data.get('car'))
-            if request.user != car.owner:
-                return Response({"error": "You can only add features to your own cars."}, status=status.HTTP_403_FORBIDDEN)
-            
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        action = request.data.get('action')
+        if not action:
+            return Response({'error': 'Action is required.'}, status=status.HTTP_400_BAD_REQUEST)
 
-class CarAvailabilityView(APIView):
+        if action == 'create_car':
+            serializer = CarSerializer(data=request.data)
+            if serializer.is_valid():
+                serializer.save(owner=request.user)
+                return Response({'message': 'Car created.', 'car': serializer.data}, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        elif action == 'add_image':
+            car_id = request.data.get('car')
+            try:
+                car = Car.objects.get(id=car_id)
+            except Car.DoesNotExist:
+                return Response({'error': 'Car not found.'}, status=status.HTTP_404_NOT_FOUND)
+            if car.owner != request.user:
+                return Response({'error': 'You can only add images to your own cars.'}, status=status.HTTP_403_FORBIDDEN)
+            serializer = CarImageSerializer(data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({'message': 'Image added.', 'image': serializer.data}, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        elif action == 'add_feature':
+            car_id = request.data.get('car')
+            try:
+                car = Car.objects.get(id=car_id)
+            except Car.DoesNotExist:
+                return Response({'error': 'Car not found.'}, status=status.HTTP_404_NOT_FOUND)
+            if car.owner != request.user:
+                return Response({'error': 'You can only add features to your own cars.'}, status=status.HTTP_403_FORBIDDEN)
+            serializer = CarFeatureSerializer(data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({'message': 'Feature added.', 'feature': serializer.data}, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        elif action == 'add_availability':
+            car_id = request.data.get('car')
+            try:
+                car = Car.objects.get(id=car_id)
+            except Car.DoesNotExist:
+                return Response({'error': 'Car not found.'}, status=status.HTTP_404_NOT_FOUND)
+            if car.owner != request.user:
+                return Response({'error': 'You can only add availability to your own cars.'}, status=status.HTTP_403_FORBIDDEN)
+            serializer = CarAvailabilitySerializer(data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({'message': 'Availability added.', 'availability': serializer.data}, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        else:
+            return Response({'error': 'Invalid action.'}, status=status.HTTP_400_BAD_REQUEST)
+
+class BecomeOwnerView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def post(self, request):
-        serializer = CarAvailabilitySerializer(data=request.data)
-        if serializer.is_valid():
-            # Check if user is the car owner
-            car = Car.objects.get(id=request.data.get('car'))
-            if request.user != car.owner:
-                return Response({"error": "You can only add availability to your own cars."}, status=status.HTTP_403_FORBIDDEN)
-            
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        user = request.user
+        # Check if the user is already an owner or car-owner
+        if user.user_type == 'owner' or user.user_type == 'car-owner':
+            return Response({"detail": "You are already a car owner or owner."},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        user.user_type = 'owner'  # Change user_type to 'owner'
+        user.save()
+        return Response({"message": "User type updated to owner successfully."},
+                        status=status.HTTP_200_OK)
+
 
 class DashboardView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        data = {
+            'username': user.username,
+            'email': user.email,
+            'user_type': user.user_type,
+        }
+
+        if user.user_type == 'owner':
+            cars = Car.objects.filter(owner=user)
+            data['cars'] = CarSerializer(cars, many=True).data
+        elif user.user_type == 'admin':
+            # Add admin specific data here
+            pass
+
+        return Response(data)
     def get(self, request):
         user = request.user
         
@@ -303,3 +375,80 @@ class DashboardView(APIView):
                 'pending_bookings': pending_bookings,
                 'recent_bookings': BookingSerializer(recent_bookings, many=True).data,
             })
+
+class CarFullCreateAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    @transaction.atomic
+    def post(self, request):
+        car_data = request.data.copy()
+        images = request.FILES.getlist('images')
+        features = request.data.getlist('features')
+        availability = request.data.getlist('availability')
+
+        # Parse features and availability if sent as JSON strings
+        try:
+            features = json.loads(features[0]) if features else []
+        except Exception:
+            features = []
+        try:
+            availability = json.loads(availability[0]) if availability else []
+        except Exception:
+            availability = []
+
+        # Remove related fields from car_data
+        car_data.pop('images', None)
+        car_data.pop('features', None)
+        car_data.pop('availability', None)
+
+        car_serializer = CarSerializer(data=car_data)
+        if car_serializer.is_valid():
+            car = car_serializer.save(owner=request.user)
+        else:
+            return Response({'errors': car_serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Save images
+        image_objs = []
+        for img in images:
+            img_data = {'car': car.id, 'is_primary': False}
+            img_serializer = CarImageSerializer(data=img_data, files={'image': img})
+            if img_serializer.is_valid():
+                image_objs.append(img_serializer.save())
+            else:
+                transaction.set_rollback(True)
+                return Response({'errors': img_serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Save features
+        feature_objs = []
+        for feat in features:
+            feat_data = {'car': car.id, 'name': feat.get('name')}
+            feat_serializer = CarFeatureSerializer(data=feat_data)
+            if feat_serializer.is_valid():
+                feature_objs.append(feat_serializer.save())
+            else:
+                transaction.set_rollback(True)
+                return Response({'errors': feat_serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Save availability
+        avail_objs = []
+        for avail in availability:
+            avail_data = {
+                'car': car.id,
+                'start_date': avail.get('start_date'),
+                'end_date': avail.get('end_date')
+            }
+            avail_serializer = CarAvailabilitySerializer(data=avail_data)
+            if avail_serializer.is_valid():
+                avail_objs.append(avail_serializer.save())
+            else:
+                transaction.set_rollback(True)
+                return Response({'errors': avail_serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({
+            'message': 'Car and related data created successfully.',
+            'car': CarSerializer(car).data,
+            'images': [CarImageSerializer(img).data for img in image_objs],
+            'features': [CarFeatureSerializer(f).data for f in feature_objs],
+            'availability': [CarAvailabilitySerializer(a).data for a in avail_objs],
+        }, status=status.HTTP_201_CREATED)
