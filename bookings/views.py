@@ -14,6 +14,7 @@ from rest_framework.response import Response
 from rest_framework import permissions, status
 from rest_framework import generics
 from rest_framework.permissions import IsAdminUser
+from rest_framework.decorators import api_view, permission_classes
 
 
 class AdminReportListAPIView(generics.ListAPIView):
@@ -223,6 +224,41 @@ class OwnerBookingsAPIView(APIView):
         bookings = bookings.order_by('-created_at')
         serializer = BookingSerializer(bookings, many=True)
         return Response(serializer.data)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def complete_booking(request, booking_id):
+    try:
+        booking = Booking.objects.get(id=booking_id)
+    except Booking.DoesNotExist:
+        return Response({"error": "Booking not found."}, status=status.HTTP_404_NOT_FOUND)
+
+    # Only owner of car or admin can mark it completed
+    if booking.car.owner != request.user and not request.user.is_staff:
+        return Response({"error": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
+
+    if booking.status != 'approved':
+        return Response({"error": "Only approved bookings can be marked as completed."}, status=status.HTTP_400_BAD_REQUEST)
+
+    booking.status = 'completed'
+    booking.save()
+
+    # Award points if regular user
+    if booking.user.user_type == 'regular':
+        booking.user.points += 50  # You can change this logic if you want
+        booking.user.save()
+
+    return Response({
+        "message": "Booking marked as completed. Points awarded.",
+        "awarded_points": 50,
+        "total_user_points": booking.user.points
+    }, status=status.HTTP_200_OK)
+
+
+
+
+
+
 
 
 @login_required
