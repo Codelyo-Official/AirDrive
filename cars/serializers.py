@@ -46,10 +46,15 @@ class CarAvailabilitySerializer(serializers.ModelSerializer):
         model = CarAvailability
         fields = ['start_date', 'end_date']
 
+class AdminCarUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Car
+        fields = '__all__'  # or list explicitly
+
 class CarSerializer(serializers.ModelSerializer):
-    images = CarImageSerializer(many=True, write_only=True)
-    features = CarFeatureSerializer(many=True, write_only=True)
-    availability = CarAvailabilitySerializer(many=True, write_only=True)
+    images = CarImageSerializer(many=True, read_only=True)
+    features = CarFeatureSerializer(many=True, read_only=True)
+    availability = CarAvailabilitySerializer(many=True, read_only=True)
 
     class Meta:
         model = Car

@@ -8,10 +8,12 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from django.db.models import Q
-from users.models import User
-from .serializers import AdminUserSerializer
+from users.models import User,Offer
+from .serializers import AdminUserSerializer,OfferSerializer
 from rest_framework.permissions import IsAdminUser
 from bookings.models import Booking
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 
 
 
@@ -23,6 +25,43 @@ from bookings.models import Booking
 from django.db.models import Sum
 from django.utils.dateparse import parse_date
 from rest_framework.views import APIView
+from rest_framework import generics
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def redeem_offer(request, offer_id):
+    user = request.user
+    try:
+        offer = Offer.objects.get(id=offer_id, is_active=True)
+    except Offer.DoesNotExist:
+        return Response({"error": "Offer not found or inactive."}, status=404)
+
+    if user.points < offer.points_required:
+        return Response({"error": "Not enough points to redeem this offer."}, status=400)
+
+    user.points -= offer.points_required
+    user.save()
+
+    Redemption.objects.create(user=user, offer=offer)
+
+    return Response({
+        "message": f"Successfully redeemed {offer.title}.",
+        "remaining_points": user.points
+    })
+
+
+class AdminOfferListCreateAPIView(generics.ListCreateAPIView):
+    permission_classes = [IsAdminUser]
+    queryset = Offer.objects.all()
+    serializer_class = OfferSerializer
+
+class AdminOfferUpdateDeleteAPIView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsAdminUser]
+    queryset = Offer.objects.all()
+    serializer_class = OfferSerializer
+    lookup_field = 'id'
+
 
 class AdminRevenueReportAPIView(APIView):
     permission_classes = [IsAdminUser]

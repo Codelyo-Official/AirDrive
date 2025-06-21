@@ -14,9 +14,10 @@ from bookings.views import(OwnerBookingsAPIView,ReportCreateAPIView,
                            BookingApprovalAPIView,BookingCreateAPIView,
                            MyBookingsAPIView,AdminBookingListAPIView,
                            AdminBookingUpdateAPIView,AdminReportListAPIView,
-                           AdminReportUpdateAPIView,
+                           AdminReportUpdateAPIView,complete_booking
                            )
-from users.views import (AdminUserListAPIView,AdminUserDetailAPIView,AdminRevenueReportAPIView)
+from users.views import (AdminUserListAPIView,AdminUserDetailAPIView,AdminRevenueReportAPIView,
+AdminOfferListCreateAPIView,AdminOfferUpdateDeleteAPIView,redeem_offer)
 router = DefaultRouter()
 router.register(r'users', UserViewSet)
 router.register(r'cars', CarViewSet)
@@ -53,7 +54,6 @@ urlpatterns = [
 
     path('admin/cars/', AdminCarListAPIView.as_view()),
     path('admin/cars/<int:id>/', AdminCarUpdateAPIView.as_view()),
-    path('admin/cars/<int:id>/delete/', AdminCarDeleteAPIView.as_view()),
 
     # Booking admin
     path('admin/bookings/', AdminBookingListAPIView.as_view()),
@@ -65,4 +65,10 @@ urlpatterns = [
 
     # Revenue
     path('admin/revenue-report/', AdminRevenueReportAPIView.as_view()),
+
+
+    path('bookings/<int:booking_id>/complete/', complete_booking, name='complete-booking'),
+    path('admin/offers/', AdminOfferListCreateAPIView.as_view(), name='admin-offers'),
+    path('admin/offers/<int:id>/', AdminOfferUpdateDeleteAPIView.as_view(), name='admin-offer-detail'),
+    path('offers/<int:offer_id>/redeem/', redeem_offer, name='redeem-offer'),
    ]
