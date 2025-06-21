@@ -24,11 +24,16 @@ class AdminCarDeleteAPIView(generics.DestroyAPIView):
     permission_classes = [IsAdminUser]
     lookup_field = 'id'
 
-class AdminCarUpdateAPIView(generics.UpdateAPIView):
-    queryset = Car.objects.all()
-    serializer_class = CarSerializer
+class AdminCarUpdateAPIView(APIView):
     permission_classes = [IsAdminUser]
-    lookup_field = 'id'
+
+    def put(self, request, car_id):
+        car = get_object_or_404(Car, id=car_id)
+        serializer = AdminCarUpdateSerializer(car, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({'message': 'Car updated successfully.'})
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class AdminCarListAPIView(generics.ListAPIView):
     serializer_class = CarSerializer

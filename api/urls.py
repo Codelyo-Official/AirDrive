@@ -54,7 +54,6 @@ urlpatterns = [
 
     path('admin/cars/', AdminCarListAPIView.as_view()),
     path('admin/cars/<int:id>/', AdminCarUpdateAPIView.as_view()),
-    path('admin/cars/<int:id>/delete/', AdminCarDeleteAPIView.as_view()),
 
     # Booking admin
     path('admin/bookings/', AdminBookingListAPIView.as_view()),
