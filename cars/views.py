@@ -14,6 +14,15 @@ from rest_framework import generics
 
 from rest_framework.permissions import BasePermission
 
+class IsAdminOrSupport(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return request.user.user_type in ['admin', 'support']
+class IsAdminOnly(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return request.user.user_type == 'admin'
+
+
+
 class IsAdmin(BasePermission):
     def has_permission(self, request, view):
         return request.user and request.user.is_authenticated and request.user.is_superuser

@@ -17,6 +17,14 @@ from rest_framework.permissions import IsAdminUser
 from rest_framework.decorators import api_view, permission_classes
 
 
+class IsAdminOrSupport(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return request.user.user_type in ['admin', 'support']
+class IsAdminOnly(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return request.user.user_type == 'admin'
+
+
 class AdminReportListAPIView(generics.ListAPIView):
     serializer_class = ReportSerializer
 

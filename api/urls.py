@@ -17,7 +17,11 @@ from bookings.views import(OwnerBookingsAPIView,ReportCreateAPIView,
                            AdminReportUpdateAPIView,complete_booking
                            )
 from users.views import (AdminUserListAPIView,AdminUserDetailAPIView,AdminRevenueReportAPIView,
-AdminOfferListCreateAPIView,AdminOfferUpdateDeleteAPIView,redeem_offer)
+AdminOfferListCreateAPIView,AdminOfferUpdateDeleteAPIView,redeem_offer,CreateSupportUserView)
+
+from support.views import (CreateTicketView,MyTicketsView,AllTicketsAdminSupportView,
+                           ReplyToTicketView,UpdateTicketStatusView,TicketRepliesView)
+
 router = DefaultRouter()
 router.register(r'users', UserViewSet)
 router.register(r'cars', CarViewSet)
@@ -71,4 +75,16 @@ urlpatterns = [
     path('admin/offers/', AdminOfferListCreateAPIView.as_view(), name='admin-offers'),
     path('admin/offers/<int:id>/', AdminOfferUpdateDeleteAPIView.as_view(), name='admin-offer-detail'),
     path('offers/<int:offer_id>/redeem/', redeem_offer, name='redeem-offer'),
+
+    path("admin/create-support-user/", CreateSupportUserView.as_view(), name="create-support-user"),
+
+    # Tickets
+    path("tickets/", CreateTicketView.as_view(), name="create-ticket"),
+    path("tickets/user/", MyTicketsView.as_view(), name="my-tickets"),
+    path("admin/tickets/", AllTicketsAdminSupportView.as_view(), name="all-tickets"),
+    path("tickets/<int:ticket_id>/reply/", ReplyToTicketView.as_view(), name="reply-ticket"),
+    path("tickets/<int:pk>/", UpdateTicketStatusView.as_view(), name="update-ticket-status"),
+
+    path('tickets/<int:ticket_id>/replies/', TicketRepliesView.as_view(), name='ticket-replies'),
+
    ]

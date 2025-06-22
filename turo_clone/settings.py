@@ -49,6 +49,8 @@ INSTALLED_APPS = [
     'cars',
     'bookings',
     'api',
+    "support",
+    'channels',
 ]
 
 MIDDLEWARE = [
@@ -168,3 +170,17 @@ STATIC_URL = '/static/'
 # https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    'brainnn.pythonanywhere.com',  # Add this line
+]
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("127.0.0.1", 6379)],  # or use Docker container IP
+        },
+    },
+}
