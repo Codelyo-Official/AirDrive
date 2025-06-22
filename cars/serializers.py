@@ -65,9 +65,9 @@ class CarSerializer(serializers.ModelSerializer):
         ]
 
     def create(self, validated_data):
-        images_data = validated_data.pop('images')
-        features_data = validated_data.pop('features')
-        availability_data = validated_data.pop('availability')
+        images_data = validated_data.pop('images', [])
+        features_data = validated_data.pop('features',[])
+        availability_data = validated_data.pop('availability',[])
         
         car = Car.objects.create(**validated_data)
 
