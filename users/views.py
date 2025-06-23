@@ -14,11 +14,27 @@ from rest_framework.permissions import IsAdminUser
 from bookings.models import Booking
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
+from rest_framework import permissions
+
+class IsAdminOrSupport(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return request.user.user_type in ['admin', 'support']
+
+class IsAdminOnly(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return request.user.user_type == 'admin'
 
 
 
+class CreateSupportUserView(APIView):
+    permission_classes = [IsAdminOnly]
 
-
+    def post(self, request):
+        serializer = CreateSupportUserSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(user_type='support')
+            return Response({"message": "Support user created successfully", "user": serializer.data}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 

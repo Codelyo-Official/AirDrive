@@ -6,6 +6,7 @@ class User(AbstractUser):
         ('regular', 'Regular User'),
         ('owner', 'Car Owner'),
         ('admin', 'Admin'),
+        ('support', 'Support'),
     )
     
     user_type = models.CharField(max_length=20, choices=USER_TYPE_CHOICES, default='regular')
