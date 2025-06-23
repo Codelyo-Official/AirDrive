@@ -8,9 +8,10 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import permissions, status
 from rest_framework.parsers import MultiPartParser, FormParser
-from .serializers import CarSerializer
+from .serializers import CarSerializer,AdminCarUpdateSerializer
 from rest_framework.permissions import IsAdminUser
 from rest_framework import generics
+from rest_framework.permissions import AllowAny
 
 from rest_framework.permissions import BasePermission
 
@@ -66,7 +67,9 @@ class AdminCarListAPIView(generics.ListAPIView):
                 models.Q(owner__username__icontains=search)
             )
         return qs
+
 class AvailableCarsAPIView(APIView):
+    permission_classes = [AllowAny]
     def get(self, request):
         cars = Car.objects.filter(status='available').order_by('-created_at')
 
