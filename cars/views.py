@@ -45,6 +45,12 @@ class AdminCarUpdateAPIView(APIView):
             return Response({'message': 'Car updated successfully.'})
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    def delete(self, request, car_id):
+        car = get_object_or_404(Car, id=car_id)
+        car.delete()
+        return Response({"message": "Car deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
+
+
 class AdminCarListAPIView(generics.ListAPIView):
     serializer_class = CarSerializer
     permission_classes = [IsAdminUser]
