@@ -57,7 +57,9 @@ urlpatterns = [
     path('admin/users/<int:user_id>/', AdminUserDetailAPIView.as_view(), name='admin-user-detail'),
 
     path('admin/cars/', AdminCarListAPIView.as_view()),
-    path('admin/cars/<int:id>/', AdminCarUpdateAPIView.as_view()),
+    path('admin/cars/<int:car_id>/', AdminCarUpdateAPIView.as_view(), name='admin-car-update'),
+
+    #path('admin/cars/<int:id>/', AdminCarUpdateAPIView.as_view()),
 
     # Booking admin
     path('admin/bookings/', AdminBookingListAPIView.as_view()),
