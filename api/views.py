@@ -20,6 +20,17 @@ from rest_framework.permissions import IsAuthenticated
 from django.db import transaction
 import json
 
+class CarCreateAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    def post(self, request):
+        print(request)
+        serializer = CarSerializer(data=request.data, context={'request': request})
+        
+        if serializer.is_valid():
+            serializer.save()  # owner is set in serializer.create()
+            return Response({'message': 'Car created successfully'}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 class BecomeCarOwnerView(APIView):
     permission_classes = [IsAuthenticated]
 

@@ -75,26 +75,33 @@ class AdminCarListAPIView(generics.ListAPIView):
         return qs
 
 class AvailableCarsAPIView(APIView):
-    authentication_classes = []  # Make it public
-    permission_classes = []      # Make it public
+    authentication_classes = []  # Public access
+    permission_classes = []      # Public access
 
     def get(self, request):
         cars = Car.objects.filter(status='available').order_by('-created_at')
         data = []
 
         for car in cars:
-            # Get primary image (or first one)
-            primary_image = car.images.filter(is_primary=True).first()
-            image_url = primary_image.image.url if primary_image else None
+            # Get primary image or first image
+            primary_image = car.images.filter(is_primary=True).first() or car.images.first()
+            image_url = (
+                request.build_absolute_uri(primary_image.image.url)
+                if primary_image and primary_image.image
+                else None
+            )
 
-            # Get availability
+            # Get availability list
             availability_list = [
                 {
-                    "start_date": str(a.start_date),
-                    "end_date": str(a.end_date)
+                    "start_date": a.start_date.strftime('%Y-%m-%d'),
+                    "end_date": a.end_date.strftime('%Y-%m-%d'),
                 }
                 for a in car.availability.all()
             ]
+
+            # Get features list
+            features_list = [f.name for f in car.features.all()]
 
             data.append({
                 "id": car.id,
@@ -109,21 +116,46 @@ class AvailableCarsAPIView(APIView):
                 "transmission": car.transmission,
                 "fuel_type": car.fuel_type,
                 "image": image_url,
-                "availability": availability_list
+                "availability": availability_list,
+                "features": features_list,
             })
 
         return Response(data)
 
+
+
+import json
+
 class CarCreateAPIView(APIView):
-    permission_classes = [IsAuthenticated]  # Ensures only logged-in users can access
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
 
     def post(self, request):
-        serializer = CarSerializer(data=request.data, context={'owner': request.user})  # Pass user in context
-        if serializer.is_valid():
-            serializer.save(owner=request.user)  # Set the owner here
-            return Response({'message': 'Car created successfully'}, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        # Convert request.data to a normal dict
+        data = request.data.dict()
 
+        # Parse features and availability
+        try:
+            data['features'] = json.loads(request.data.get('features', '[]'))
+        except json.JSONDecodeError:
+            return Response({'features': 'Invalid JSON'}, status=400)
+
+        try:
+            data['availability'] = json.loads(request.data.get('availability', '[]'))
+        except json.JSONDecodeError:
+            return Response({'availability': 'Invalid JSON'}, status=400)
+
+        serializer = CarSerializer(data=data, context={'request': request})
+        if serializer.is_valid():
+            car = serializer.save()
+
+            # Handle image files
+            for img in request.FILES.getlist('images'):
+                CarImage.objects.create(car=car, image=img)
+
+            return Response({'message': 'Car created successfully'}, status=201)
+
+        return Response(serializer.errors, status=400)
 class OwnerCarListAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
