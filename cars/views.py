@@ -75,12 +75,27 @@ class AdminCarListAPIView(generics.ListAPIView):
         return qs
 
 class AvailableCarsAPIView(APIView):
-    permission_classes = [AllowAny]
+    authentication_classes = []  # Make it public
+    permission_classes = []      # Make it public
+
     def get(self, request):
         cars = Car.objects.filter(status='available').order_by('-created_at')
-
         data = []
+
         for car in cars:
+            # Get primary image (or first one)
+            primary_image = car.images.filter(is_primary=True).first()
+            image_url = primary_image.image.url if primary_image else None
+
+            # Get availability
+            availability_list = [
+                {
+                    "start_date": str(a.start_date),
+                    "end_date": str(a.end_date)
+                }
+                for a in car.availability.all()
+            ]
+
             data.append({
                 "id": car.id,
                 "make": car.make,
@@ -93,7 +108,10 @@ class AvailableCarsAPIView(APIView):
                 "seats": car.seats,
                 "transmission": car.transmission,
                 "fuel_type": car.fuel_type,
+                "image": image_url,
+                "availability": availability_list
             })
+
         return Response(data)
 
 class CarCreateAPIView(APIView):
