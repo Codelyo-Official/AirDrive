@@ -39,6 +39,8 @@ class CarAvailabilitySerializer(serializers.ModelSerializer):
 
 
 class CarSerializer(serializers.ModelSerializer):
+    images = CarImageSerializer(many=True, read_only=True)
+
     # Remove images from here because handled separately
     features = CarFeatureSerializer(many=True)
     availability = CarAvailabilitySerializer(many=True)
@@ -48,9 +50,13 @@ class CarSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'make', 'model', 'year', 'color', 'license_plate', 'description',
             'daily_rate', 'location', 'latitude', 'longitude', 'seats', 'transmission',
-            'fuel_type', 'status', 'auto_approve_bookings', 'features', 'availability'
+            'fuel_type', 'status', 'auto_approve_bookings', 'features', 'availability',  # derived primary image URL
+            'images',
         ]
-
+    def get_image(self, obj):
+        request = self.context.get('request')
+        primary = obj.images.filter(is_primary=True).first() or obj.images.first()
+        return request.build_absolute_uri(primary.image.url) if primary else None
     def create(self, validated_data):
         features_data = validated_data.pop('features', [])
         availability_data = validated_data.pop('availability', [])
