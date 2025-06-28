@@ -22,4 +22,5 @@ class TicketReply(models.Model):
     ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name="replies")
     sender = models.ForeignKey(User, on_delete=models.CASCADE)
     message = models.TextField()
+    author = models.TextField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

@@ -4,6 +4,7 @@ from rest_framework.views import APIView
 from .models import Ticket, TicketReply
 from .serializers import TicketSerializer, TicketReplySerializer, TicketStatusUpdateSerializer,TicketDetailSerializer
 from rest_framework.permissions import IsAuthenticated
+from django.shortcuts import get_object_or_404
 
 
 class TicketRepliesView(APIView):
