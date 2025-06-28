@@ -113,6 +113,7 @@ class AvailableCarsAPIView(APIView):
                 "daily_rate": str(car.daily_rate),
                 "location": car.location,
                 "seats": car.seats,
+                'status':car.status,
                 "transmission": car.transmission,
                 "fuel_type": car.fuel_type,
                 "image": image_url,
